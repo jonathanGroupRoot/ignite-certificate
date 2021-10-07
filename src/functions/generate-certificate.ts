@@ -1,9 +1,9 @@
-// import chromium from "chrome-aws-lambda";
+import chrome from "chrome-aws-lambda";
 import { document } from "src/utils/dynamodb-client"
-import * as handlebars from "handlebars";
-import * as dayjs from "dayjs";
-import * as path from "path";
-import * as fs from "fs";
+import handlebars from "handlebars";
+import dayjs from "dayjs";
+import path from "path";
+import fs from "fs";
 
 interface ICreateCertificate {
   id: string;
@@ -42,14 +42,35 @@ export const handle = async (event: any) => {
   const medalPath = path.join(process.cwd(), "src", "templates", "selo.png");
   const medal = fs.readFileSync(medalPath, "base64");
   const date = dayjs().format("DD/MM/YYYY");
-
-  await compile({
+  const template = {
     id,
     name,
     date,
     medal,
     grade,
+  };
+
+  const content = await compile(template);
+
+  const browser = await chrome.puppeteer.launch({
+    headless: true,
+    args: chrome.args,
+    defaultViewport: chrome.defaultViewport,
+    executablePath: await chrome.executablePath
   });
+
+  const page = (await browser.pages())[0];
+
+  await page.setContent(content);
+
+  await page.pdf({
+    format: "a4",
+    landscape: true,
+    printBackground: true,
+    preferCSSPageSize: true,
+  });
+
+  await browser.close();
 
   return {
     statusCode: 201,
