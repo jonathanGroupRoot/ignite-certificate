@@ -31,14 +31,26 @@ const compile = async (data: ITemplate) => {
 export const handle = async (event: any) => {
   const { id, name, grade } = JSON.parse(event.body) as ICreateCertificate;
 
-  await document.put({
-    TableName: 'users_certificates',
-    Item: {
-      id,
-      name,
-      grade,
+  const response = await document.query({
+    TableName: "users_certificates",
+    KeyConditionExpression: "id = :id",
+    ExpressionAttributeValues: {
+      ":id": id
     }
   }).promise();
+
+  const userAlreadyExists = response.Items[0];
+
+  if (!userAlreadyExists) {
+    await document.put({
+      TableName: 'users_certificates',
+      Item: {
+        id,
+        name,
+        grade,
+      }
+    }).promise();
+  }
 
   const medalPath = path.join(process.cwd(), "src", "templates", "selo.png");
   const medal = fs.readFileSync(medalPath, "base64");
@@ -86,9 +98,9 @@ export const handle = async (event: any) => {
   return {
     statusCode: 201,
     body: JSON.stringify(
-      { 
+      {
         message: 'Certificate was created!',
-        url_certificate: `https://ignite-certificate-bucket.s3.amazonaws.com/${id}.pdf` 
+        url_certificate: `https://ignite-certificate-bucket.s3.amazonaws.com/${id}.pdf`
       }
     ),
     headers: {

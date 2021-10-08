@@ -30,6 +30,14 @@ functions:
       - http:
           path: /generateCertificate
           method: post
+          cors: true
+  verifyCertificate:
+    handler: src/functions/verify-certificate.handle
+    events:
+      - http:
+          path: /verifyCertificate/{id}
+          method: get
+          cors: true
 
 resources:
   Resources: 
