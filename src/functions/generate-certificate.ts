@@ -4,6 +4,7 @@ import handlebars from "handlebars";
 import dayjs from "dayjs";
 import path from "path";
 import fs from "fs";
+import AWS from "aws-sdk";
 
 interface ICreateCertificate {
   id: string;
@@ -63,7 +64,7 @@ export const handle = async (event: any) => {
 
   await page.setContent(content);
 
-  await page.pdf({
+  const pdf = await page.pdf({
     format: "a4",
     landscape: true,
     printBackground: true,
@@ -72,9 +73,24 @@ export const handle = async (event: any) => {
 
   await browser.close();
 
+  const s3 = new AWS.S3();
+
+  await s3.putObject({
+    Bucket: "ignite-certificate-bucket",
+    Key: `${id}.pdf`,
+    ACL: "public-read",
+    Body: pdf,
+    ContentType: "application/pdf"
+  }).promise();
+
   return {
     statusCode: 201,
-    body: JSON.stringify({ message: 'Certificate was created!' }),
+    body: JSON.stringify(
+      { 
+        message: 'Certificate was created!',
+        url_certificate: `https://ignite-certificate-bucket.s3.amazonaws.com/${id}.pdf` 
+      }
+    ),
     headers: {
       'Content-Type': 'application/json'
     }
